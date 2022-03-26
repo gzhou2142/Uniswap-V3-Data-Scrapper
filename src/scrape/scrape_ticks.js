@@ -12,7 +12,7 @@ const {
 } = require("../utils/timestamps");
 const {
   request_tick_data_timestamp,
-} = require("../request/request_ticksDayData");
+} = require("../request/request_tickData");
 const { insert_data_unique_id } = require("../mongodb/insert_data");
 
 const uniswap_start_timestamp = day_to_timestamp(2021, 5, 1);
@@ -39,7 +39,11 @@ async function scrape_tick_day_data(
         insert_status.data_count
       }     inserted: ${insert_status.inserted_count}`
     );
-    if (scrape_missing && insert_status.inserted_count == 0) {
+    if (
+      scrape_missing &&
+      insert_status.inserted_count === 0 &&
+      insert_status.data_count != 0
+    ) {
       break;
     }
     timestamp = get_previous_day_timestamp(timestamp);

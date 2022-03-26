@@ -9,14 +9,14 @@ const dbName = "Uniswap";
 
 async function connect_db() {
   await client.connect();
-  console.log(chalk.green("Connected successfully to MongoDB server"));
+  // console.log(chalk.green("Connected successfully to MongoDB server"));
   const db = client.db(dbName);
   return db;
 }
 
 async function close_client() {
   client.close();
-  console.log(chalk.yellow("Disconnected from MongoDB server"));
+  // console.log(chalk.yellow("Disconnected from MongoDB server"));
   console.log("\n");
 }
 
