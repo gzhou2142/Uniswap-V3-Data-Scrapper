@@ -1,7 +1,7 @@
 require("dotenv").config();
 const { request } = require("graphql-request");
 
-const TICK_DATA_QUERY = require("../graphql/tick_day_data_query");
+const TICK_DATA_QUERY = require("../graphql/tickDayDatas_query");
 
 const UNI_SUBGRAPH_ENDPOINT = process.env.UNISWAP_SUBGRAPH_ENDPOINT;
 
