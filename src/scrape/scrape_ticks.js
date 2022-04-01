@@ -1,54 +1,57 @@
-const chalk = require("chalk");
+const mongodb = require("../mongodb/mongodb");
+const timestamp = require("../utils/timestamp");
+const { request_tick_data } = require("../request/request_tickData");
+const { request_insert } = require("./scrape_utils");
 
-const {
-  connect_db,
-  close_client,
-  get_collection,
-} = require("../mongodb/connect_mongo");
-const {
-  get_current_day_timestamp,
-  day_to_timestamp,
-  get_previous_day_timestamp,
-} = require("../utils/timestamps");
-const {
-  request_tick_data_timestamp,
-} = require("../request/request_tickData");
-const { insert_data_unique_id } = require("../mongodb/insert_data");
+const print = require("../utils/print");
 
-const uniswap_start_timestamp = day_to_timestamp(2021, 5, 1);
+const uniswap_start_timestamp = timestamp.from_date(2021, 5, 1);
 
-async function scrape_tick_day_data(
-  pool_address,
-  collection_name,
-  scrape_missing = true
-) {
-  const db = await connect_db();
-  const collection = await get_collection(db, collection_name);
+async function scrape_tick_day_data(pool_address, collection_name, params) {
+  const db = await mongodb.connect_db();
+  const collection = await mongodb.get_collection(db, collection_name);
 
-  let timestamp = get_current_day_timestamp();
-  console.log(chalk.cyan(`Downloading tick data for pool ${pool_address}`));
-  while (uniswap_start_timestamp < timestamp) {
-    const data = await request_tick_data_timestamp(
-      pool_address,
-      timestamp / 1000
+  const retrieve_latest = params.retrieve_latest;
+  const hour_interval = params.hour_interval;
+  const verbose = params.verbose;
+
+  let start_timestamp = timestamp.current();
+  let end_timestamp = Date.now();
+
+  let total_data = 0;
+  let total_insert = 0;
+  print.pool_collection_info(collection_name, pool_address);
+  while (uniswap_start_timestamp < end_timestamp) {
+    const input = {
+      pool_address: pool_address,
+      start_timestamp: start_timestamp,
+      end_timestamp: end_timestamp,
+    };
+    const insert_status = await request_insert(
+      request_tick_data,
+      collection,
+      input
     );
-    const insert_status = await insert_data_unique_id(collection, data);
-    var date = new Date(timestamp);
-    console.log(
-      `${date.toUTCString()}     count: ${
-        insert_status.data_count
-      }     inserted: ${insert_status.inserted_count}`
-    );
+    if (!insert_status.success) break;
+
+    if (verbose >= 2) print.insert_info(start_timestamp, insert_status);
+
+    total_data += insert_status.data_count;
+    total_insert += insert_status.inserted_count;
     if (
-      scrape_missing &&
+      retrieve_latest &&
       insert_status.inserted_count === 0 &&
       insert_status.data_count != 0
     ) {
       break;
     }
-    timestamp = get_previous_day_timestamp(timestamp);
+    end_timestamp = start_timestamp;
+    start_timestamp = timestamp.add_hours(start_timestamp, -hour_interval);
   }
-  close_client();
+  if (verbose >= 1) {
+    print.total_insert_info(start_timestamp, Date.now(), total_data, total_insert);
+  }
+  mongodb.close_client();
 }
 
 module.exports = {

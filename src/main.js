@@ -1,52 +1,61 @@
 require("dotenv").config();
 
-const { scrape_tick_day_data } = require("./scrape/scrape_ticks");
-const {
-  scrape_pools_data,
-  scrape_pool_day_data,
-  scrape_pool_hour_data,
-} = require("./scrape/scrape_pools");
-const { scrape_mint_data } = require("./scrape/scrape_mints");
-const { scrape_burn_data } = require("./scrape/scrape_burns");
-const {
-  scrape_position_snapshot_data,
-} = require("./scrape/scrape_positionSnapshot");
-const { scrape_swap_data } = require("./scrape/scrape_swaps");
-const {
-  scrape_token_day_data,
-  scrape_token_hour_data,
-} = require("./scrape/scrape_tokens");
+const yargs = require("yargs/yargs");
+const { hideBin } = require("yargs/helpers");
+const argv = yargs(hideBin(process.argv)).argv;
+
+const uniswap = require("./uniswap");
 
 const { TOKEN_ADDRESSES } = require("./constants/token_address");
-const {
-  TOKEN_DAY_DATA,
-  TOKEN_HOUR_DATA,
-} = require("./constants/collection_names");
-const USDC_ETH_PAIR_ADDRESS = process.env.USDC_ETH_PAIR_ADDRESS;
-const TICK_DAY_DATA_COLLECTION = process.env.TICK_DAY_DATA;
-const POOL_DAY_DATA_COLLECTION = process.env.POOL_DAY_DATA;
-const MINT_DATA_COLLECTION = process.env.MINT_DATA;
-const BURN_DATA_COLLECTION = process.env.BURN_DATA;
-const POSITION_SNAPSHOT_COLLECTION = process.env.POSITION_SNAPSHOT_DATA;
-const SWAP_DATA_COLLECTION = process.env.SWAP_DATA;
-const POOL_DATA_COLLECTION = process.env.POOL_DATA;
-const POOL_HOUR_DATA_COLLECTION = process.env.POOL_HOUR_DATA;
+const { POOL_ADDRESSES } = require("./constants/pool_address");
+
+/**
+ * pool_id
+ * 0 - all pools
+ * 1 - USDC/ETH 0.3
+ * 2 - USDC/ETH 0.05
+ * 3 - USDT/ETH 0.05
+ * 4 - USDC/USDT 0.01
+ * 5 - BTC/ETH 0.05
+ * 6 - ETH/USDT 0.3
+ **/
 
 async function main() {
-  // await scrape_tick_day_data(USDC_ETH_PAIR_ADDRESS, TICK_DAY_DATA_COLLECTION);
-  // await scrape_pool_day_data(USDC_ETH_PAIR_ADDRESS, POOL_DAY_DATA_COLLECTION);
-  // await scrape_mint_data(USDC_ETH_PAIR_ADDRESS, MINT_DATA_COLLECTION);
-  // await scrape_burn_data(USDC_ETH_PAIR_ADDRESS, BURN_DATA_COLLECTION);
-  // await scrape_position_snapshot_data(
-  //   USDC_ETH_PAIR_ADDRESS,
-  //   POSITION_SNAPSHOT_COLLECTION
-  // );
-  // await scrape_swap_data(USDC_ETH_PAIR_ADDRESS, SWAP_DATA_COLLECTION);
-  // await scrape_pools_data(POOL_DATA_COLLECTION);
-  // await scrape_pool_hour_data(USDC_ETH_PAIR_ADDRESS, POOL_HOUR_DATA_COLLECTION);
+  const retrieve_latest = argv.latest ? true : false;
+  const pool_id = argv.pool_id ? argv.pool_id - 1 : -1;
 
-  await scrape_token_day_data(TOKEN_ADDRESSES, TOKEN_DAY_DATA);
-  await scrape_token_hour_data(TOKEN_ADDRESSES, TOKEN_HOUR_DATA);
+  let pools;
+  if (pool_id === -1) {
+    pools = POOL_ADDRESSES;
+  } else {
+    pools = [POOL_ADDRESSES[pool_id]];
+  }
+
+  if (argv.swaps) {
+    await uniswap.swaps(pools, retrieve_latest);
+  } else if (argv.ticks) {
+    await uniswap.ticks(pools, retrieve_latest);
+  } else if (argv.pool_day) {
+    await uniswap.pool_day(pools, retrieve_latest);
+  } else if (argv.pool_hour) {
+    await uniswap.pool_hour(pools, retrieve_latest);
+  } else if (argv.mints) {
+    await uniswap.mints(pools, retrieve_latest);
+  } else if (argv.burns) {
+    await uniswap.burns(pools, retrieve_latest);
+  } else if (argv.positions) {
+    await uniswap.positions_snapshots(pools, retrieve_latest);
+  } else if (argv.token_hour) {
+    await uniswap.token_hour(TOKEN_ADDRESSES, retrieve_latest);
+  } else if (argv.pools) {
+    await uniswap.pools(retrieve_latest);
+  } else if (argv.project) {
+    const pool = [POOL_ADDRESSES[0]]
+    await uniswap.ticks(pool, retrieve_latest);
+    await uniswap.pool_day(pool, retrieve_latest);
+    await uniswap.pool_hour(pool, retrieve_latest);
+    await uniswap.positions_snapshots(pool, retrieve_latest);
+  }
 }
 
 main();

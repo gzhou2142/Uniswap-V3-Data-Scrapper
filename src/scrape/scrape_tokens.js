@@ -1,35 +1,26 @@
 const chalk = require("chalk");
 
-const {
-  connect_db,
-  close_client,
-  get_collection,
-} = require("../mongodb/connect_mongo");
-const {
-  get_current_day_timestamp,
-  day_to_timestamp,
-  add_hours_timestamp,
-  get_previous_day_timestamp,
-} = require("../utils/timestamps");
+const mongodb = require("../mongodb/mongodb");
+const timestamp = require("../utils/timestamp");
 
 const {
   request_token_day_data,
   request_token_hour_data,
 } = require("../request/request_tokenData");
 const { insert_data_unique_id } = require("../mongodb/insert_data");
-const uniswap_start_timestamp = day_to_timestamp(2021, 5, 1);
+const uniswap_start_timestamp = timestamp.from_date(2021, 5, 1);
 
 async function scrape_token_day_data(
   token_addresses,
   collection_name,
-  scrape_missing = true,
-  scrape_hour_interval = 1200
+  retrieve_latest = true,
+  hour_interval = 1200
 ) {
-  const db = await connect_db();
-  const collection = await get_collection(db, collection_name);
+  const db = await mongodb.connect_db();
+  const collection = await mongodb.get_collection(db, collection_name);
 
   for (const token_address of token_addresses) {
-    let start_timestamp = get_current_day_timestamp();
+    let start_timestamp = timestamp.current();
     let end_timestamp = Date.now();
     console.log(
       chalk.cyan(`Downloading token day data for token ${token_address}`)
@@ -49,34 +40,30 @@ async function scrape_token_day_data(
         }     inserted: ${insert_status.inserted_count}`
       );
       if (
-        scrape_missing &&
+        retrieve_latest &&
         insert_status.inserted_count === 0 &&
         insert_status.data_count != 0
       ) {
         break;
       }
       end_timestamp = start_timestamp;
-      start_timestamp = add_hours_timestamp(
-        start_timestamp,
-        -scrape_hour_interval
-      );
+      start_timestamp = timestamp.add_hours(start_timestamp, -hour_interval);
     }
   }
-
-  close_client();
+  mongodb.close_client();
 }
 
 async function scrape_token_hour_data(
   token_addresses,
   collection_name,
-  scrape_missing = true,
-  scrape_hour_interval = 48
+  retrieve_latest = true,
+  hour_interval = 48
 ) {
-  const db = await connect_db();
-  const collection = await get_collection(db, collection_name);
+  const db = await mongodb.connect_db();
+  const collection = await mongodb.get_collection(db, collection_name);
 
   for (const token_address of token_addresses) {
-    let start_timestamp = get_current_day_timestamp();
+    let start_timestamp = timestamp.current();
     let end_timestamp = Date.now();
     console.log(
       chalk.cyan(`Downloading token hour data for token ${token_address}`)
@@ -95,21 +82,18 @@ async function scrape_token_hour_data(
         }     inserted: ${insert_status.inserted_count}`
       );
       if (
-        scrape_missing &&
+        retrieve_latest &&
         insert_status.inserted_count === 0 &&
         insert_status.data_count != 0
       ) {
         break;
       }
       end_timestamp = start_timestamp;
-      start_timestamp = add_hours_timestamp(
-        start_timestamp,
-        -scrape_hour_interval
-      );
+      start_timestamp = timestamp.add_hours(start_timestamp, -hour_interval);
     }
   }
 
-  close_client();
+  mongodb.close_client();
 }
 
 module.exports = {

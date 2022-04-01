@@ -1,71 +1,82 @@
-const chalk = require("chalk");
-
-const {
-  connect_db,
-  close_client,
-  get_collection,
-} = require("../mongodb/connect_mongo");
-const {
-  get_current_day_timestamp,
-  day_to_timestamp,
-  add_hours_timestamp,
-} = require("../utils/timestamps");
+const mongodb = require("../mongodb/mongodb");
+const timestamp = require("../utils/timestamp");
 
 const { request_swap_data } = require("../request/request_swapData");
-const { insert_data_unique_id } = require("../mongodb/insert_data");
-const uniswap_start_timestamp = day_to_timestamp(2021, 5, 1);
+const { request_insert } = require("./scrape_utils");
+const print = require("../utils/print");
 
-async function scrape_swap_data(
-  pool_address,
-  collection_name,
-  scrape_missing = true,
-  scrape_hour_interval = 2
-) {
-  const db = await connect_db();
-  const collection = await get_collection(db, collection_name);
+const uniswap_start_timestamp = timestamp.from_date(2021, 5, 2);
 
-    let d = new Date(Date.now());
-    d.setUTCHours(0, 0, 0, 0);
-    d.setUTCDate(d.getUTCDate() + 1);
-    let end_timestamp = d.getTime();
-  let start_timestamp = add_hours_timestamp(
-    end_timestamp,
-    -scrape_hour_interval
-  );
+async function earliest_swap_ts(collection, pool_address) {
+  const query = { "pool.id": pool_address };
+  const sort = { "transaction.timestamp": 1 };
+  const earliest_entry = await mongodb.find_entry_sort(collection, query, sort);
+  return Number(earliest_entry.transaction.timestamp) * 1000;
+}
 
-//   let end_timestamp = Date.UTC(2021, 5 - 1, 20, 0, 0, 0);
-//   let start_timestamp = add_hours_timestamp(
-//     end_timestamp,
-//     -scrape_hour_interval
-//   );
+function round_timestamp(timestamp) {
+  let d = new Date(timestamp);
+  d.setUTCHours(d.getUTCHours() + 1, 0, 0, 0);
+  return d.getTime();
+}
 
+async function scrape_swap_data(pool_address, collection_name, params) {
+  const db = await mongodb.connect_db();
+  const collection = await mongodb.get_collection(db, collection_name);
+
+  const retrieve_latest = params.retrieve_latest;
+  const hour_interval = params.hour_interval;
+  const verbose = params.verbose;
+
+  // let begin_timestamp;
+  // if (retrieve_latest) {
+  //   begin_timestamp = Date.now();
+  // } else {
+  //   begin_timestamp = await earliest_swap_ts(collection, pool_address);
+  // }
+
+  let begin_timestamp = Date.now();
+
+  let end_timestamp = round_timestamp(begin_timestamp);
+  let start_timestamp = timestamp.add_hours(end_timestamp, -hour_interval);
+  let total_data = 0,
+    total_insert = 0;
+
+  print.pool_collection_info(collection.namespace, pool_address);
   while (uniswap_start_timestamp < end_timestamp) {
-    const data = await request_swap_data(
-      pool_address,
-      parseInt(start_timestamp / 1000),
-      parseInt(end_timestamp / 1000)
+    const input = {
+      pool_address: pool_address,
+      start_timestamp: start_timestamp,
+      end_timestamp: end_timestamp,
+    };
+    const insert_status = await request_insert(
+      request_swap_data,
+      collection,
+      input
     );
-    const insert_status = await insert_data_unique_id(collection, data);
-    var date = new Date(start_timestamp);
-    console.log(
-      `${date.toUTCString()}     count: ${
-        insert_status.data_count
-      }     inserted: ${insert_status.inserted_count}`
-    );
+    if (!insert_status.success) break;
+    if (verbose >= 2) print.insert_info(start_timestamp, insert_status);
+    total_data += insert_status.data_count;
+    total_insert += insert_status.inserted_count;
     if (
-      scrape_missing &&
+      retrieve_latest &&
       insert_status.inserted_count === 0 &&
       insert_status.data_count != 0
     ) {
       break;
     }
     end_timestamp = start_timestamp;
-    start_timestamp = add_hours_timestamp(
+    start_timestamp = timestamp.add_hours(start_timestamp, -hour_interval);
+  }
+  if (verbose >= 1) {
+    print.total_insert_info(
       start_timestamp,
-      -scrape_hour_interval
+      begin_timestamp,
+      total_data,
+      total_insert
     );
   }
-  close_client();
+  mongodb.close_client();
 }
 
 module.exports = {

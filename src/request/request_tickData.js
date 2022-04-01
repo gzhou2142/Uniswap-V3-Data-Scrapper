@@ -5,32 +5,28 @@ const TICK_DATA_QUERY = require("../graphql/tickDayDatas_query");
 
 const UNI_SUBGRAPH_ENDPOINT = process.env.UNISWAP_SUBGRAPH_ENDPOINT;
 
-async function request_tick_data(pool_address, date, first = 10, skip = 0) {
-  const params = {
-    first: first,
-    skip: skip,
-    date: date,
-    pool_address: pool_address,
-  };
-  const data = await request(UNI_SUBGRAPH_ENDPOINT, TICK_DATA_QUERY, params);
-  return data.tickDayDatas;
-}
+async function request_tick_data(input) {
+  const pool_address = input.pool_address;
+  const start_timestamp = parseInt(input.start_timestamp / 1000);
+  const end_timestamp = parseInt(input.end_timestamp / 1000);
 
-async function request_tick_data_timestamp(pair_address, timestamp) {
   const step_size = 100;
   let skip_size = 0;
   let last_data_size = 0;
   let tick_data = [];
   do {
-    const data = await request_tick_data(
-      pair_address,
-      timestamp,
-      step_size,
-      skip_size
-    );
+    const params = {
+      pool_address: pool_address,
+      start_timestamp: start_timestamp,
+      end_timestamp: end_timestamp,
+      first: step_size,
+      skip: skip_size,
+    };
 
-    last_data_size = data.length;
-    tick_data = tick_data.concat(data);
+    const data = await request(UNI_SUBGRAPH_ENDPOINT, TICK_DATA_QUERY, params);
+
+    last_data_size = data.tickDayDatas.length;
+    tick_data = tick_data.concat(data.tickDayDatas);
     skip_size += step_size;
   } while (last_data_size === step_size);
 
@@ -39,5 +35,4 @@ async function request_tick_data_timestamp(pair_address, timestamp) {
 
 module.exports = {
   request_tick_data: request_tick_data,
-  request_tick_data_timestamp: request_tick_data_timestamp,
 };

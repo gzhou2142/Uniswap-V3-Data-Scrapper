@@ -1,65 +1,70 @@
-const chalk = require("chalk");
+const mongodb = require("../mongodb/mongodb");
 
-const {
-  connect_db,
-  close_client,
-  get_collection,
-} = require("../mongodb/connect_mongo");
-const {
-  get_current_day_timestamp,
-  day_to_timestamp,
-  get_previous_day_timestamp,
-  add_hours_timestamp,
-} = require("../utils/timestamps");
+const timestamp = require("../utils/timestamp");
 
 const { request_burn_data } = require("../request/request_burnData");
-const { insert_data_unique_id } = require("../mongodb/insert_data");
-const uniswap_start_timestamp = day_to_timestamp(2021, 5, 1);
+const { request_insert } = require("./scrape_utils");
+const print = require("../utils/print");
+
+const uniswap_start_timestamp = timestamp.from_date(2021, 5, 1);
 
 async function scrape_burn_data(
   pool_address,
   collection_name,
-  scrape_missing = true,
-  scrape_hour_interval = 12
+  params
 ) {
-  const db = await connect_db();
-  const collection = await get_collection(db, collection_name);
-  let start_timestamp = get_current_day_timestamp();
+  const db = await mongodb.connect_db();
+  const collection = await mongodb.get_collection(db, collection_name);
+
+  const retrieve_latest = params.retrieve_latest;
+  const hour_interval = params.hour_interval;
+  const verbose = params.verbose;
+
+  let start_timestamp = timestamp.current();
   let end_timestamp = Date.now();
-  console.log(chalk.cyan(`Downloading burn data for pool ${pool_address}`));
+  // let end_timestamp = Date.UTC(2022, 1 - 1, 4, 0, 0, 0);
+  // let start_timestamp = timestamp.previous_day(end_timestamp);
+  let total_data = 0;
+  let total_insert = 0;
 
+  print.pool_collection_info(collection_name, pool_address);
   while (uniswap_start_timestamp < end_timestamp) {
-    const data = await request_burn_data(
-      pool_address,
-      start_timestamp / 1000,
-      parseInt(end_timestamp / 1000)
+    const input = {
+      pool_address: pool_address,
+      start_timestamp: start_timestamp,
+      end_timestamp: end_timestamp,
+    };
+
+    const insert_status = await request_insert(
+      request_burn_data,
+      collection,
+      input
     );
+    if (!insert_status.success) break;
 
-    const insert_status = await insert_data_unique_id(collection, data);
-    var date = new Date(start_timestamp);
+    if (verbose >= 2) print.insert_info(start_timestamp, insert_status);
 
-    console.log(
-      `${date.toUTCString()}     count: ${
-        insert_status.data_count
-      }     inserted: ${insert_status.inserted_count}`
-    );
-
+    total_data += insert_status.data_count;
+    total_insert += insert_status.inserted_count;
     if (
-      scrape_missing &&
+      retrieve_latest &&
       insert_status.inserted_count === 0 &&
       insert_status.data_count != 0
     ) {
       break;
     }
-
     end_timestamp = start_timestamp;
-    start_timestamp = add_hours_timestamp(
+    start_timestamp = timestamp.add_hours(start_timestamp, -1 * hour_interval);
+  }
+  if (verbose >= 1) {
+    print.total_insert_info(
       start_timestamp,
-      -1 * scrape_hour_interval
+      Date.now(),
+      total_data,
+      total_insert
     );
   }
-
-  close_client();
+  mongodb.close_client();
 }
 
 module.exports = {

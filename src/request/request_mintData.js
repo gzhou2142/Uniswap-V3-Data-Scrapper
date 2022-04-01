@@ -5,8 +5,12 @@ const MINT_DATA_QUERY = require("../graphql/mints_query");
 
 const UNI_SUBGRAPH_ENDPOINT = process.env.UNISWAP_SUBGRAPH_ENDPOINT;
 
-async function request_mint_data(pool_address, start_timestamp, end_timestamp) {
-  const step_size = 50;
+async function request_mint_data(input) {
+  const pool_address = input.pool_address;
+  const start_timestamp = parseInt(input.start_timestamp / 1000);
+  const end_timestamp = parseInt(input.end_timestamp / 1000);
+
+  const step_size = 100;
   let skip_size = 0;
   let last_data_size = 0;
   let data_arr = [];

@@ -45,10 +45,15 @@ async function request_pool_hour_data(
   return data.poolHourDatas;
 }
 
-async function request_pool_day_data(pool_address, timestamp) {
+async function request_pool_day_data(
+  pool_address,
+  start_timestamp,
+  end_timestamp
+) {
   const params = {
     pool_address: pool_address,
-    date: timestamp,
+    start_timestamp: start_timestamp,
+    end_timestamp: end_timestamp,
   };
   const data = await request(
     UNI_SUBGRAPH_ENDPOINT,
