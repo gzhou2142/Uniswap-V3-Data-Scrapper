@@ -38,7 +38,8 @@ const pool_day_data_query = gql`
 
       volumeToken0
       volumeToken1
-
+      volumeUSD
+      
       tvlUSD
       feesUSD
 

@@ -18,12 +18,12 @@ const { POOL_ADDRESSES } = require("./constants/pool_address");
  * 4 - USDC/USDT 0.01
  * 5 - BTC/ETH 0.05
  * 6 - ETH/USDT 0.3
+ * 7 - DAI/USDC 0.01
  **/
 
 async function main() {
   const retrieve_latest = argv.latest ? true : false;
   const pool_id = argv.pool_id ? argv.pool_id - 1 : -1;
-
   let pools;
   if (pool_id === -1) {
     pools = POOL_ADDRESSES;
@@ -50,11 +50,15 @@ async function main() {
   } else if (argv.pools) {
     await uniswap.pools(retrieve_latest);
   } else if (argv.project) {
-    const pool = [POOL_ADDRESSES[0]]
-    await uniswap.ticks(pool, retrieve_latest);
+    // const pool = [POOL_ADDRESSES[0]]
+    // await uniswap.ticks(pool, retrieve_latest);
+    const pool = pools;
     await uniswap.pool_day(pool, retrieve_latest);
     await uniswap.pool_hour(pool, retrieve_latest);
+    await uniswap.ticks(pool, retrieve_latest);
     await uniswap.positions_snapshots(pool, retrieve_latest);
+  } else if (argv.test) {
+    await uniswap.positions_snapshots([POOL_ADDRESSES[6]], retrieve_latest);
   }
 }
 

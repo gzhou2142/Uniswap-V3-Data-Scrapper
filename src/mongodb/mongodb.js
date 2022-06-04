@@ -1,6 +1,5 @@
 require("dotenv").config();
 const { MongoClient } = require("mongodb");
-const chalk = require("chalk");
 
 const MONGO_URL = process.env.MONGO_URL;
 const client = new MongoClient(MONGO_URL);

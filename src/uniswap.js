@@ -49,22 +49,33 @@ async function ticks(POOL_ADDRESSES, retrieve_latest) {
 }
 
 async function pool_day(POOL_ADDRESSES, retrieve_latest) {
-  await scrape_pool_day_data(
-    POOL_ADDRESSES,
-    collections.POOL_DAY_DATA,
-    retrieve_latest,
-    1200,
-    2
-  );
+  const pool_day_params = {
+    retrieve_latest: retrieve_latest,
+    hour_interval: 1200,
+    verbose: 2,
+  };
+  for (let i = 0; i < POOL_ADDRESSES.length; i++) {
+    await scrape_pool_day_data(
+      POOL_ADDRESSES[i],
+      collections.POOL_DAY_DATA,
+      pool_day_params
+    );
+  }
 }
 
 async function pool_hour(POOL_ADDRESSES, retrieve_latest) {
-  await scrape_pool_hour_data(
-    POOL_ADDRESSES,
-    collections.POOL_HOUR_DATA,
-    retrieve_latest,
-    2
-  );
+  const pool_hour_params = {
+    retrieve_latest: retrieve_latest,
+    hour_interval: 96,
+    verbose: 2,
+  };
+  for (let i = 0; i < POOL_ADDRESSES.length; i++) {
+    await scrape_pool_hour_data(
+      POOL_ADDRESSES[i],
+      collections.POOL_HOUR_DATA,
+      pool_hour_params
+    );
+  }
 }
 
 async function mints(POOL_ADDRESSES, retrieve_latest) {
@@ -122,7 +133,11 @@ async function token_hour(TOKEN_ADDRESSES, retrieve_latest) {
 }
 
 async function pools(retrieve_latest) {
-  await scrape_pools_data(collections.POOL_DATA, retrieve_latest);
+  const params = {
+    retrieve_latest: retrieve_latest,
+    verbose: 2,
+  };
+  await scrape_pools_data(collections.POOL_DATA, params);
 }
 
 module.exports = {

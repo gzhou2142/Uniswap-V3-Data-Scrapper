@@ -6,7 +6,9 @@ const POOL_HOUR_DATA_QUERY = require("../graphql/poolHourDatas_query");
 const POOL_DAY_DATA_QUERY = require("../graphql/poolDayDatas_query");
 const UNI_SUBGRAPH_ENDPOINT = process.env.UNISWAP_SUBGRAPH_ENDPOINT;
 
-async function request_pool_data(start_timestamp, end_timestamp) {
+async function request_pool_data(input) {
+  const start_timestamp = parseInt(input.start_timestamp / 1000);
+  const end_timestamp = parseInt(input.end_timestamp / 1000);
   const step_size = 50;
   let skip_size = 0;
   let last_data_size = 0;
@@ -27,15 +29,11 @@ async function request_pool_data(start_timestamp, end_timestamp) {
   return data_arr;
 }
 
-async function request_pool_hour_data(
-  pool_address,
-  start_timestamp,
-  end_timestamp
-) {
+async function request_pool_hour_data(input) {
   const params = {
-    pool_address: pool_address,
-    start_timestamp: start_timestamp,
-    end_timestamp: end_timestamp,
+    pool_address: input.pool_address,
+    start_timestamp: parseInt(input.start_timestamp / 1000),
+    end_timestamp: parseInt(input.end_timestamp / 1000),
   };
   const data = await request(
     UNI_SUBGRAPH_ENDPOINT,
@@ -45,15 +43,11 @@ async function request_pool_hour_data(
   return data.poolHourDatas;
 }
 
-async function request_pool_day_data(
-  pool_address,
-  start_timestamp,
-  end_timestamp
-) {
+async function request_pool_day_data(input) {
   const params = {
-    pool_address: pool_address,
-    start_timestamp: start_timestamp,
-    end_timestamp: end_timestamp,
+    pool_address: input.pool_address,
+    start_timestamp: parseInt(input.start_timestamp / 1000),
+    end_timestamp: parseInt(input.end_timestamp / 1000),
   };
   const data = await request(
     UNI_SUBGRAPH_ENDPOINT,

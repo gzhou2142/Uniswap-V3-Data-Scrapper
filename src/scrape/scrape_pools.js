@@ -9,156 +9,194 @@ const {
   request_pool_data,
 } = require("../request/request_poolData");
 const print = require("../utils/print");
-const { insert_data_unique_id } = require("../mongodb/insert_data");
+const {
+  request_insert,
+  auto_hour_interval,
+  get_start_ts,
+} = require("./scrape_utils");
 
 const uniswap_start_timestamp = timestamp.from_date(2021, 5, 1);
 
-async function scrape_pool_day_data(
-  pool_addresses,
-  collection_name,
-  retrieve_missing = true,
-  hour_interval = 1200,
-  verbose = 1
-) {
+async function scrape_pool_day_data(pool_address, collection_name, params) {
   const db = await mongodb.connect_db();
   const collection = await mongodb.get_collection(db, collection_name);
 
-  for (const pool_address of pool_addresses) {
-    let start_timestamp = timestamp.current();
-    let end_timestamp = Date.now();
+  const retrieve_latest = params.retrieve_latest;
+  const verbose = params.verbose;
 
-    let total_data = 0;
-    let total_insert = 0;
+  const query_params = {
+    query: { "pool.id": pool_address },
+    sort: { date: -1 },
+    ts_attribute: "date",
+  };
 
-    print.pool_collection_info(collection_name, pool_address);
+  const start_ts = await get_start_ts(
+    db,
+    collection,
+    retrieve_latest,
+    pool_address,
+    query_params
+  );
+  const end_ts = Date.now();
 
-    while (uniswap_start_timestamp < end_timestamp) {
-      const data = await request_pool_day_data(
-        pool_address,
-        parseInt(start_timestamp / 1000),
-        parseInt(end_timestamp / 1000)
+  print.pool_collection_info(collection_name, pool_address);
+
+  let total_data = 0;
+  let total_insert = 0;
+  let hour_interval = 1200;
+  let prev_ts = timestamp.add_hours(start_ts, -3);
+  let current_ts = start_ts;
+
+  while (prev_ts < end_ts) {
+    const input = {
+      pool_address: pool_address,
+      start_timestamp: prev_ts,
+      end_timestamp: current_ts,
+    };
+    const insert_status = await request_insert(
+      request_pool_day_data,
+      collection,
+      input
+    );
+    if (!insert_status.success) {
+      throw Error(
+        `Failed to get pool day data between timestamp ${prev_ts}-${current_ts}`
       );
-      const insert_status = await insert_data_unique_id(collection, data);
-      if (verbose >= 2) {
-        print.insert_info(start_timestamp, insert_status);
-      }
-      total_data += insert_status.data_count;
-      total_insert += insert_status.inserted_count;
-      if (
-        retrieve_missing &&
-        insert_status.inserted_count == 0 &&
-        insert_status.data_count != 0
-      ) {
-        break;
-      }
-      end_timestamp = start_timestamp;
-      start_timestamp = timestamp.add_hours(start_timestamp, -hour_interval);
     }
+    if (verbose >= 2) print.insert_info(prev_ts, insert_status);
 
-    if (verbose >= 1) {
-      print.total_insert_info(
-        start_timestamp,
-        Date.now(),
-        total_data,
-        total_insert
-      );
-    }
+    total_data += insert_status.data_count;
+    total_insert += insert_status.inserted_count;
+
+    prev_ts = current_ts;
+    current_ts = timestamp.add_hours(current_ts, hour_interval);
+  }
+
+  if (verbose >= 1) {
+    print.total_insert_info(start_ts, end_ts, total_data, total_insert);
   }
 
   mongodb.close_client();
 }
 
-async function scrape_pool_hour_data(
-  pool_addresses,
-  collection_name,
-  retrieve_latest = true,
-  verbose = 1
-) {
+async function scrape_pool_hour_data(pool_address, collection_name, params) {
   const db = await mongodb.connect_db();
   const collection = await mongodb.get_collection(db, collection_name);
 
-  for (const pool_address of pool_addresses) {
-    let start_timestamp = timestamp.current();
-    let end_timestamp = Date.now();
-    let total_data_count = 0;
-    let total_insert_count = 0;
+  const retrieve_latest = params.retrieve_latest;
+  const verbose = params.verbose;
 
-    print.pool_collection_info(collection_name, pool_address);
+  const query_params = {
+    query: { "pool.id": pool_address },
+    sort: { periodStartUnix: -1 },
+    ts_attribute: "periodStartUnix",
+  };
 
-    while (uniswap_start_timestamp < end_timestamp) {
-      const data = await request_pool_hour_data(
-        pool_address,
-        parseInt(start_timestamp / 1000),
-        parseInt(end_timestamp / 1000)
-      );
-      const insert_status = await insert_data_unique_id(collection, data);
-      if (verbose >= 2) print.insert_info(start_timestamp, insert_status);
-      total_data_count += insert_status.data_count;
-      total_insert_count += insert_status.inserted_count;
-      if (
-        retrieve_latest &&
-        insert_status.inserted_count === 0 &&
-        insert_status.data_count != 0
-      ) {
-        break;
-      }
-      end_timestamp = start_timestamp;
-      start_timestamp = timestamp.previous_day(start_timestamp);
-    }
+  const start_ts = await get_start_ts(
+    db,
+    collection,
+    retrieve_latest,
+    pool_address,
+    query_params
+  );
+  const end_ts = Date.now();
 
-    if (verbose >= 1) {
-      print.total_insert_info(
-        start_timestamp,
-        Date.now(),
-        total_data_count,
-        total_insert_count
-      );
-    }
-  }
-  mongodb.close_client();
-}
+  print.pool_collection_info(collection_name, pool_address);
 
-async function scrape_pools_data(
-  collection_name,
-  retrieve_latest = true,
-  hour_interval = 48,
-  verbose = 1
-) {
-  const db = await mongodb.connect_db();
-  const collection = await mongodb.get_collection(db, collection_name);
-  let start_timestamp = timestamp.current();
-  let end_timestamp = Date.now();
   let total_data_count = 0;
   let total_insert_count = 0;
+  let hour_interval = 96;
+  let prev_ts = timestamp.add_hours(start_ts, -3);
+  let current_ts = start_ts;
 
-  console.log(`Downloading ${chalk.green(collection_name)}`);
-
-  while (uniswap_start_timestamp < end_timestamp) {
-    const data = await request_pool_data(
-      parseInt(start_timestamp / 1000),
-      parseInt(end_timestamp / 1000)
+  while (prev_ts <= end_ts) {
+    const input = {
+      pool_address: pool_address,
+      start_timestamp: prev_ts,
+      end_timestamp: current_ts,
+    };
+    const insert_status = await request_insert(
+      request_pool_hour_data,
+      collection,
+      input
     );
-    const insert_status = await insert_data_unique_id(collection, data);
-    if (verbose >= 2) {
-      print.insert_info(start_timestamp, insert_status);
+    if (!insert_status.success) {
+      throw Error(
+        `Failed to get pool hour data between timestamp ${prev_ts}-${current_ts}`
+      );
     }
+    if (verbose >= 2) print.insert_info(prev_ts, insert_status);
     total_data_count += insert_status.data_count;
     total_insert_count += insert_status.inserted_count;
-    if (
-      retrieve_latest &&
-      insert_status.inserted_count === 0 &&
-      insert_status.data_count != 0
-    ) {
-      break;
-    }
-    end_timestamp = start_timestamp;
-    start_timestamp = timestamp.add_hours(start_timestamp, -hour_interval);
+
+    prev_ts = current_ts;
+    current_ts = timestamp.add_hours(current_ts, hour_interval);
   }
 
   if (verbose >= 1) {
     print.total_insert_info(
-      start_timestamp,
-      Date.now(),
+      start_ts,
+      end_ts,
+      total_data_count,
+      total_insert_count
+    );
+  }
+  mongodb.close_client();
+}
+
+async function scrape_pools_data(collection_name, params) {
+  const retrieve_latest = params.retrieve_latest;
+  const verbose = params.verbose;
+
+  const db = await mongodb.connect_db();
+  const collection = await mongodb.get_collection(db, collection_name);
+
+  const latest_entry = await mongodb.find_entry_sort(
+    collection,
+    {},
+    { createdAtTimestamp: -1 }
+  );
+
+  let start_ts;
+  let end_ts = Date.now();
+  if (retrieve_latest && latest_entry) {
+    start_ts = Number(latest_entry.createdAtTimestamp) * 1000;
+  } else {
+    start_ts = uniswap_start_timestamp;
+  }
+
+  let hour_interval = 24;
+  let prev_ts = timestamp.add_hours(start_ts, -3);
+  let current_ts = start_ts;
+
+  let total_data_count = 0;
+  let total_insert_count = 0;
+  console.log(`Downloading ${chalk.green(collection_name)}`);
+
+  while (prev_ts < end_ts) {
+    const input = {
+      start_timestamp: prev_ts,
+      end_timestamp: current_ts,
+    };
+    const insert_status = await request_insert(
+      request_pool_data,
+      collection,
+      input
+    );
+    if (verbose >= 2) {
+      print.insert_info(prev_ts, insert_status);
+    }
+    total_data_count += insert_status.data_count;
+    total_insert_count += insert_status.inserted_count;
+    hour_interval = auto_hour_interval(hour_interval, insert_status.data_count);
+    prev_ts = current_ts;
+    current_ts = timestamp.add_hours(current_ts, hour_interval);
+  }
+
+  if (verbose >= 1) {
+    print.total_insert_info(
+      start_ts,
+      end_ts,
       total_data_count,
       total_insert_count
     );
