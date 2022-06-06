@@ -4,19 +4,16 @@ const { MongoClient } = require("mongodb");
 const MONGO_URL = process.env.MONGO_URL;
 const client = new MongoClient(MONGO_URL);
 
-const dbName = "Uniswap";
+// const dbName = "Uniswap";
 
-async function connect_db() {
+async function connect_db(dbName = "Uniswap") {
   await client.connect();
-  // console.log(chalk.green("Connected successfully to MongoDB server"));
   const db = client.db(dbName);
   return db;
 }
 
 async function close_client() {
   client.close();
-  // console.log(chalk.yellow("Disconnected from MongoDB server"));
-  // console.log("\n");
 }
 
 function get_collection(db, collection_name) {

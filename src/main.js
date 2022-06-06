@@ -45,18 +45,22 @@ async function main() {
     await uniswap.burns(pools, retrieve_latest);
   } else if (argv.positions) {
     await uniswap.positions_snapshots(pools, retrieve_latest);
+  } else if (argv.token_day) {
+    await uniswap.token_day(TOKEN_ADDRESSES, retrieve_latest);
   } else if (argv.token_hour) {
     await uniswap.token_hour(TOKEN_ADDRESSES, retrieve_latest);
   } else if (argv.pools) {
     await uniswap.pools(retrieve_latest);
   } else if (argv.project) {
-    // const pool = [POOL_ADDRESSES[0]]
-    // await uniswap.ticks(pool, retrieve_latest);
-    const pool = pools;
-    await uniswap.pool_day(pool, retrieve_latest);
-    await uniswap.pool_hour(pool, retrieve_latest);
-    await uniswap.ticks(pool, retrieve_latest);
-    await uniswap.positions_snapshots(pool, retrieve_latest);
+    await uniswap.pool_day(pools, retrieve_latest);
+    await uniswap.pool_hour(pools, retrieve_latest);
+    await uniswap.ticks(pools, retrieve_latest);
+    await uniswap.positions_snapshots(pools, retrieve_latest);
+    await uniswap.token_day(TOKEN_ADDRESSES, retrieve_latest);
+    await uniswap.token_hour(TOKEN_ADDRESSES, retrieve_latest);
+    await uniswap.mints(pools, retrieve_latest);
+    await uniswap.burns(pools, retrieve_latest);
+    await uniswap.swaps(pools, retrieve_latest);
   } else if (argv.test) {
     await uniswap.positions_snapshots([POOL_ADDRESSES[6]], retrieve_latest);
   }

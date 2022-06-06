@@ -56,7 +56,7 @@ async function scrape_position_snapshot_data(
     );
     if (!insert_status.success) {
       throw Error(
-        `Failed to get position snapshot between timestamp ${previous_ts}-${current_ts}`
+        `Failed to get position snapshot between timestamp ${prev_ts}-${current_ts}`
       );
     }
 
@@ -69,7 +69,7 @@ async function scrape_position_snapshot_data(
   }
 
   if (verbose >= 1) {
-    print.total_insert_info(start_ts, Date.now(), total_data, total_insert);
+    print.total_insert_info(start_ts, end_ts, total_data, total_insert);
   }
   mongodb.close_client();
 }

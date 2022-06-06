@@ -18,6 +18,16 @@ function pool_collection_info(collection_name, pool_address) {
   );
 }
 
+function token_collection_info(collection_name, token_address) {
+  console.log(
+    chalk.white(
+      `Downloading ${chalk.green(collection_name)} for token ${chalk.green(
+        token_address
+      )}`
+    )
+  );
+}
+
 function insert_info(timestamp, insert_status) {
   var date = new Date(timestamp);
   console.log(
@@ -58,6 +68,7 @@ function red(text) {
 
 module.exports = {
   pool_collection_info,
+  token_collection_info,
   insert_info,
   total_insert_info,
   request_error,

@@ -31,6 +31,19 @@ const burns_data_query = gql`
       pool {
         id
       }
+      token0 {
+        id
+        symbol
+        name
+        decimals
+      }
+      token1 {
+        id
+        symbol
+        name
+        decimals
+      }
+      timestamp
       owner
       origin
       amount

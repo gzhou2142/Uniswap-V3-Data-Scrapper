@@ -117,19 +117,31 @@ async function positions_snapshots(POOL_ADDRESSES, retrieve_latest) {
 }
 
 async function token_day(TOKEN_ADDRESSES, retrieve_latest) {
-  await scrape_token_day_data(
-    TOKEN_ADDRESSES,
-    collections.TOKEN_DAY_DATA,
-    retrieve_latest
-  );
+  const token_day_params = {
+    retrieve_latest: retrieve_latest,
+    verbose: 2,
+  };
+  for (let i = 0; i < TOKEN_ADDRESSES.length; i++) {
+    await scrape_token_day_data(
+      TOKEN_ADDRESSES[i],
+      collections.TOKEN_DAY_DATA,
+      token_day_params
+    );
+  }
 }
 
 async function token_hour(TOKEN_ADDRESSES, retrieve_latest) {
-  await scrape_token_hour_data(
-    TOKEN_ADDRESSES,
-    collections.TOKEN_HOUR_DATA,
-    retrieve_latest
-  );
+  const token_hour_params = {
+    retrieve_latest: retrieve_latest,
+    verbose: 2,
+  };
+  for (let i = 0; i < TOKEN_ADDRESSES.length; i++) {
+    await scrape_token_hour_data(
+      TOKEN_ADDRESSES[i],
+      collections.TOKEN_HOUR_DATA,
+      token_hour_params
+    );
+  }
 }
 
 async function pools(retrieve_latest) {

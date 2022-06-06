@@ -61,14 +61,16 @@ async function get_start_ts(
 }
 
 function auto_hour_interval(current_interval, num_entries) {
+  let new_interval;
   if (num_entries > 300) {
     const ratio = num_entries / 200;
-    return parseInt(current_interval / ratio);
+    new_interval = parseInt(current_interval / ratio);
   } else if (num_entries < 50) {
-    return current_interval * 2;
+    new_interval = current_interval * 2;
   } else {
-    return current_interval;
+    new_interval = current_interval;
   }
+  return Math.max(new_interval, 1);
 }
 
 module.exports = {
