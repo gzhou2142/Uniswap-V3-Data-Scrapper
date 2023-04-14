@@ -60,7 +60,7 @@ async function main() {
     await uniswap.token_hour(TOKEN_ADDRESSES, retrieve_latest);
     await uniswap.mints(pools, retrieve_latest);
     await uniswap.burns(pools, retrieve_latest);
-    await uniswap.swaps(pools, retrieve_latest);
+    // await uniswap.swaps(pools, retrieve_latest);
   } else if (argv.test) {
     await uniswap.positions_snapshots([POOL_ADDRESSES[6]], retrieve_latest);
   }
